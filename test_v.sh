@@ -1,0 +1,1 @@
+sudo python test_vedio.py --model ./prototxts/enet_deploy_final.prototxt \--weights ./enet_weights_zoo/cityscapes_weights.caffemodel \--colours ./scripts/cityscapes19.png \--input_video ./videos/test001.mp4 \--out_dir ./output 
