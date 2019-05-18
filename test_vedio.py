@@ -14,6 +14,8 @@ sys.path.insert(0, caffe_root + 'python')
 import caffe
 sys.path.append('/usr/local/lib/python2.7/site-packages')
 import cv2
+#import imutils
+import time
 def make_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, required=True, help='.prototxt file for inference')
@@ -24,6 +26,10 @@ def make_parser():
                                                                    'should be stored')
     parser.add_argument('--gpu', type=str, default='0', help='0: gpu mode active, else gpu mode inactive')
     parser.add_argument('--input_video', type=str, required=True, help='input vedio path')
+#------------add----定义类别classes--和--颜色colors------------------#
+    parser.add_argument('--classes', required=True, default='--classes ./enet-cityscapes/enet-classes.txt', help='path to .txt file containing class labels')
+    parser.add_argument('--colors', type=str, help='path to .txt file containing colors for labels')
+	
     
     return parser
 # initialize the video stream and pointer to output video file
@@ -55,6 +61,7 @@ writer = None
 
 if __name__ == '__main__':
 	parser1 = make_parser()
+
 	args = parser1.parse_args()
         caffe.set_mode_gpu()
 	#if args.gpu == 0:
@@ -67,6 +74,46 @@ if __name__ == '__main__':
 	#input_shape = net.blobs['data'].data.shape
 	output_shape = net.blobs['deconv6_0_0'].data.shape
         label_colours = cv2.imread(args.colours, 1).astype(np.uint8)
+#-----------绘制分类颜色信息表------------------------#
+args = vars(parser1.parse_args())
+
+# load the class label names
+CLASSES = open(args["classes"]).read().strip().split("\n")
+
+# if a colors file was supplied, load it from disk
+if args["colors"]:
+	COLORS = open(args["colors"]).read().strip().split("\n")
+	COLORS = [np.array(c.split(",")).astype("int") for c in COLORS]
+	COLORS = np.array(COLORS, dtype="uint8")
+	print ('All COLORS: \n{0}'.format(COLORS))
+
+# otherwise, we need to randomly generate RGB colors for each class
+# label
+else:
+	# initialize a list of colors to represent each class label in
+	# the mask (starting with 'black' for the background/unlabeled
+	# regions)
+	np.random.seed(42)
+	COLORS = np.random.randint(0, 255, size=(len(CLASSES) - 1, 3),
+		dtype="uint8")
+	COLORS = np.vstack([[0, 0, 0], COLORS]).astype("uint8")
+
+# initialize the legend visualization
+legend = np.zeros(((len(CLASSES) * 25) + 25, 300, 3), dtype="uint8")
+
+# loop over the class names + colors
+for (i, (className, color)) in enumerate(zip(CLASSES, COLORS)):
+	# draw the class name + color on the legend
+	color = [int(c) for c in color]
+	cv2.putText(legend, className, (5, (i * 25) + 17),
+		cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+#----cv2.putText(img, str(i), (123,456)), font, 2, (0,255,0), 3)
+#----各参数依次是：图片，添加的文字，左上角坐标，字体，字体大小，颜色，字体粗细
+	cv2.rectangle(legend, (100, (i * 25)), (300, (i * 25) + 25),
+		tuple(color), -1)
+#cv2.rectangle(image, 左下角坐标, 右上角坐标, color, 线条粗度
+print (tuple(color))
+cv2.imshow("Legend", legend)
 #----------------------循环主体-------------------------------------------
 time1 = time()
 while True:
@@ -89,7 +136,7 @@ while True:
 	frame=cv2.resize(frame, (1280,720),interpolation = cv2.INTER_CUBIC)#修改大小
         prediction_rgb=cv2.resize(prediction_rgb , (1280,720),interpolation = cv2.INTER_CUBIC)
         output = ((0.3 * frame) + (0.7 * prediction_rgb )).astype("uint8")
-        #cv2.imshow("input",frame)	
+        cv2.imshow("input",frame)	
 	#cv2.imshow("ENet", prediction_rgb)
 	cv2.imshow("ENet", output)
 #        if writer is None:
@@ -109,7 +156,6 @@ cv2.destroyAllWindows()
 
 
 '''
-
 #	    if args.out_dir is not None:
 #		input_path_ext = args.input_video.split(".")[-1]
 #		input_image_name = args.input_video.split("/")[-1:][0].replace('.' + input_path_ext, '')
@@ -117,13 +163,6 @@ cv2.destroyAllWindows()
 #		out_path_gt = args.out_dir + input_image_name + '_enet_gt' + '.' + input_path_ext
 #
 #		cv2.imwrite(out_path_im, prediction_rgb)
-
-
 		# cv2.imwrite(out_path_gt, prediction) #  label images, where each pixel has an ID that represents the class
-
 '''
-
-
-
-
 
